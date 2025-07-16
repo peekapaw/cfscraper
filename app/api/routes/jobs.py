@@ -1,14 +1,16 @@
 """
-Job management endpoints
+Job management endpoints with async optimization
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc, asc
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, desc, asc, select, func
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
 import uuid
+import asyncio
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db_dependency
 from app.models.job import Job, JobStatus, ScraperType
 from app.models.requests import JobSearchRequest
 from app.models.responses import JobListResponse, JobStatusResponse, JobResult
@@ -32,16 +34,16 @@ async def list_jobs(
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
     date_from: Optional[datetime] = Query(None, description="Filter jobs created after this date"),
     date_to: Optional[datetime] = Query(None, description="Filter jobs created before this date"),
-    
+
     # Pagination
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page (1-100)"),
-    
+
     # Sorting
     sort_by: str = Query("created_at", description="Sort field"),
     sort_order: str = Query("desc", description="Sort order (asc, desc)"),
-    
-    db: Session = Depends(get_db)
+
+    db: AsyncSession = Depends(get_async_db_dependency)
 ):
     """
     List jobs with optional filtering and pagination
@@ -66,50 +68,59 @@ async def list_jobs(
         JobListResponse with paginated job list
     """
     try:
-        # Build query
-        query = db.query(Job)
-        
+        # Build async query
+        query = select(Job)
+
         # Apply filters
         if status:
-            query = query.filter(Job.status.in_(status))
-        
+            query = query.where(Job.status.in_(status))
+
         if scraper_type:
-            query = query.filter(Job.scraper_type.in_(scraper_type))
-        
+            query = query.where(Job.scraper_type.in_(scraper_type))
+
         if url_contains:
-            query = query.filter(Job.url.contains(url_contains))
-        
+            query = query.where(Job.url.contains(url_contains))
+
         if date_from:
-            query = query.filter(Job.created_at >= date_from)
-        
+            query = query.where(Job.created_at >= date_from)
+
         if date_to:
-            query = query.filter(Job.created_at <= date_to)
-        
+            query = query.where(Job.created_at <= date_to)
+
         # Apply sorting
         sort_field = getattr(Job, sort_by, Job.created_at)
         if sort_order.lower() == "asc":
             query = query.order_by(asc(sort_field))
         else:
             query = query.order_by(desc(sort_field))
-        
-        # Get total count
-        total = query.count()
-        
-        # Apply pagination
+
+        # Get total count and jobs concurrently
+        count_query = select(func.count()).select_from(query.subquery())
+
+        # Execute count and paginated query concurrently
         offset = (page - 1) * page_size
-        jobs = query.offset(offset).limit(page_size).all()
-        
+        paginated_query = query.offset(offset).limit(page_size)
+
+        # Use asyncio.gather for concurrent execution
+        count_result, jobs_result = await asyncio.gather(
+            db.execute(count_query),
+            db.execute(paginated_query)
+        )
+
+        total = count_result.scalar()
+        jobs = jobs_result.scalars().all()
+
         # Convert to response format
         job_responses = []
         for job in jobs:
             job_response = build_job_status_response(job)
             job_responses.append(job_response)
-        
+
         # Calculate pagination info
         total_pages = (total + page_size - 1) // page_size
         has_next = page < total_pages
         has_previous = page > 1
-        
+
         return JobListResponse(
             jobs=job_responses,
             total=total,
@@ -119,7 +130,7 @@ async def list_jobs(
             has_next=has_next,
             has_previous=has_previous
         )
-        
+
     except Exception as e:
         raise handle_route_exception(e, "list jobs")
 

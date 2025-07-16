@@ -20,13 +20,125 @@ class Settings(BaseSettings):
         default="sqlite:///./cfscraper.db",
         description="Database URL"
     )
+
+    # Database connection pool settings
+    db_pool_size: int = Field(
+        default=20,
+        description="Database connection pool size"
+    )
+    db_max_overflow: int = Field(
+        default=30,
+        description="Maximum overflow connections beyond pool size"
+    )
+    db_pool_timeout: int = Field(
+        default=30,
+        description="Seconds to wait for connection from pool"
+    )
+    db_pool_recycle: int = Field(
+        default=3600,
+        description="Seconds before recreating connections"
+    )
+    db_pool_pre_ping: bool = Field(
+        default=True,
+        description="Validate connections before use"
+    )
     
     # Redis settings
     redis_url: str = Field(
         default="redis://localhost:6379",
         description="Redis URL"
     )
-    
+
+    # Redis connection pool settings
+    redis_max_connections: int = Field(
+        default=50,
+        description="Maximum Redis connections in pool"
+    )
+    redis_retry_on_timeout: bool = Field(
+        default=True,
+        description="Retry Redis operations on timeout"
+    )
+    redis_health_check_interval: int = Field(
+        default=30,
+        description="Redis health check interval in seconds"
+    )
+    redis_socket_timeout: float = Field(
+        default=5.0,
+        description="Redis socket timeout in seconds"
+    )
+    redis_socket_connect_timeout: float = Field(
+        default=5.0,
+        description="Redis socket connect timeout in seconds"
+    )
+    redis_socket_keepalive: bool = Field(
+        default=True,
+        description="Enable Redis socket keepalive"
+    )
+    redis_cluster_urls: List[str] = Field(
+        default_factory=list,
+        description="Redis cluster node URLs for failover"
+    )
+
+    # Cache settings
+    cache_default_ttl: int = Field(
+        default=3600,
+        description="Default cache TTL in seconds"
+    )
+    cache_max_memory_size: int = Field(
+        default=100 * 1024 * 1024,
+        description="Maximum memory cache size in bytes"
+    )
+    cache_memory_ttl: int = Field(
+        default=300,
+        description="Memory cache TTL in seconds"
+    )
+    cache_redis_prefix: str = Field(
+        default="cfscraper:cache:",
+        description="Redis cache key prefix"
+    )
+    cache_enable_compression: bool = Field(
+        default=True,
+        description="Enable cache data compression"
+    )
+    cache_compression_threshold: int = Field(
+        default=1024,
+        description="Compression threshold in bytes"
+    )
+
+    # HTTP client settings
+    http_timeout: float = Field(
+        default=30.0,
+        description="HTTP request timeout in seconds"
+    )
+    http_max_connections: int = Field(
+        default=100,
+        description="Maximum HTTP connections in pool"
+    )
+    http_max_keepalive_connections: int = Field(
+        default=20,
+        description="Maximum HTTP keepalive connections"
+    )
+    http_keepalive_expiry: float = Field(
+        default=5.0,
+        description="HTTP keepalive expiry in seconds"
+    )
+    http_max_retries: int = Field(
+        default=3,
+        description="Maximum HTTP request retries"
+    )
+    http_retry_backoff_factor: float = Field(
+        default=0.5,
+        description="HTTP retry backoff factor"
+    )
+    http_verify_ssl: bool = Field(
+        default=True,
+        description="Verify SSL certificates for HTTP requests"
+    )
+    http_follow_redirects: bool = Field(
+        default=True,
+        description="Follow HTTP redirects"
+    )
+
     # Job queue settings
     max_concurrent_jobs: int = Field(default=10, description="Max concurrent jobs")
     job_timeout: int = Field(default=300, description="Job timeout in seconds")

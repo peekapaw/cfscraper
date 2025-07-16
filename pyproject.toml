@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.24.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     "alembic>=1.13.0",
     "cloudscraper>=1.2.71",
     "seleniumbase>=4.20.0",
@@ -29,6 +29,10 @@ dependencies = [
     "structlog>=25.4.0",
     "opentelemetry-instrumentation-requests>=0.56b0",
     "cryptography>=41.0.0",
+    "asyncpg>=0.30.0",
+    "aioredis>=2.0.1",
+    "aiosqlite>=0.21.0",
+    "psutil>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -101,6 +105,7 @@ dev = [
     "factory-boy>=3.3.3",
     "fakeredis>=2.30.1",
     "freezegun>=1.5.3",
+    "locust>=2.37.14",
     "psutil>=7.0.0",
     "pytest-asyncio>=1.0.0",
     "pytest-benchmark>=5.1.0",
